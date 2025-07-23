@@ -12,8 +12,9 @@ import { useHandleProps } from '@/hooks/useHandleProps';
 import { stateManagementStore } from '@/stores';
 import { GridItem } from '@/types/gridItem';
 import { getComponentType } from '@/uitls/component';
+import { cleanProps } from '@/uitls/renderItem';
 import { convertCssObjectToCamelCase, convertToEmotionStyle } from '@/uitls/styleInline';
-import { convertDataToProps } from '@/uitls/transfromProp';
+import { convertToPlainProps } from '@/uitls/transfromProp';
 import { css } from '@emotion/react';
 
 import { componentRegistry, convertProps } from './ListComponent';
@@ -52,10 +53,11 @@ const handleCssWithEmotion = (staticProps: Record<string, any>) => {
 const useRenderItem = (data: GridItem, valueStream?: any) => {
   const { isForm, isNoChildren, isChart, isDatePicker } = getComponentType(data?.value || '');
   const { findVariable } = stateManagementStore();
-  const { dataState } = useHandleData({
+  const { dataState, getData } = useHandleData({
     dataProp: getPropData(data),
     valueStream,
   });
+  console.log(`🚀 ~ useRenderItem ~ dataState:${data.id}`, dataState);
 
   const { actions } = useHandleProps({ dataProps: getPropActions(data) });
 
@@ -75,14 +77,14 @@ const useRenderItem = (data: GridItem, valueStream?: any) => {
 
     staticProps.css = handleCssWithEmotion(staticProps);
 
-    const result =
+    let result =
       valueType === 'menu'
         ? { ...staticProps, ...actions }
         : {
-          ...staticProps,
-          ...dataState,
-          ...actions,
-        };
+            ...dataState,
+            ...staticProps,
+            ...actions,
+          };
 
     if (isDatePicker) {
       if (typeof result.value === 'string') result.value = dayjs(result.value);
@@ -93,6 +95,9 @@ const useRenderItem = (data: GridItem, valueStream?: any) => {
     }
     if ('styleMultiple' in result) _.unset(result, 'styleMultiple');
     if ('dataProps' in result) _.unset(result, 'dataProps');
+    const plainProps = convertToPlainProps(result, getData);
+
+    result = cleanProps(plainProps, valueType);
 
     return result;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -102,7 +107,7 @@ const useRenderItem = (data: GridItem, valueStream?: any) => {
     isLoading,
     valueType,
     Component,
-    propsCpn: convertDataToProps(propsCpn),
+    propsCpn,
     findVariable,
     dataState,
   };
@@ -115,8 +120,11 @@ const ComponentRenderer: FC<{
   data: GridItem;
   children?: React.ReactNode;
 }> = ({ Component, propsCpn, data, children }) => {
+  // console.log('ComponentRenderer', propsCpn?.style);
+  const { style, ...newPropsCpn } = propsCpn;
+
   return (
-    <Component key={data?.id} {...propsCpn}>
+    <Component key={data?.id} {...newPropsCpn}>
       {!_.isEmpty(data?.childs) ? children : propsCpn.children}
     </Component>
   );
@@ -124,14 +132,20 @@ const ComponentRenderer: FC<{
 
 const RenderSliceItem: FC<TProps> = (props) => {
   const { data, valueStream } = props;
+  console.log(`🚀 ~ { data, valueStream }:`, { data, valueStream });
   const { isLoading, valueType, Component, propsCpn, dataState } = useRenderItem(data, valueStream);
-  const { isForm, isNoChildren, isChart, isFeebBack } = getComponentType(data?.value || '');
+  const { isForm, isNoChildren, isChart, isMap } = getComponentType(data?.value || '');
   if (!valueType) return <div></div>;
   if (isLoading) return;
   if (isForm) return <RenderForm {...props} />;
 
   if (isNoChildren || isChart) return <Component key={data?.id} {...propsCpn} />;
-
+  if (isMap)
+    return (
+      <div style={{ width: propsCpn.width || '100%', height: propsCpn.height || '400px' }}>
+        <Component key={data?.id} {...propsCpn} />
+      </div>
+    );
   return (
     <ComponentRenderer Component={Component} propsCpn={propsCpn} data={data}>
       {data?.childs?.map((child, index) => (

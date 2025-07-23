@@ -2,11 +2,11 @@
 
 import {
     Badge, Button, Card, Checkbox, Collapse, DatePicker, Drawer, Dropdown, DropdownProps, Form,
-    Image, Input, InputNumber, List, Modal, Radio, Select, Statistic, Table, TableProps, Tabs, Tag,
-    Typography
+    Image, Input, InputNumber, List, Modal, Popover, Radio, Select, Statistic, Table, TableProps,
+    Tabs, Tag, Typography
 } from 'antd';
+import GoogleMapReact from 'google-map-react';
 import _ from 'lodash';
-import { ReactNode } from 'react';
 
 import { GridItem } from '@/types/gridItem';
 import { getComponentType } from '@/uitls/component';
@@ -53,6 +53,7 @@ export const componentRegistry = {
   datepicker: DatePicker,
   badge: Badge,
   icon: Icon,
+  map: GoogleMapReact,
 };
 
 const convertIconStringToComponent = (iconString: string) => {
@@ -127,7 +128,9 @@ export const convertProps = ({ data }: { data: GridItem }) => {
         columns: data?.componentProps?.columns?.map((item: any) => {
           return {
             ...item,
-            render: (value: any) => <RenderSliceItem data={item.box} valueStream={value} />,
+            render: (value: any) => {
+              return <RenderSliceItem data={item.box} valueStream={value} key={item.box.id} />;
+            },
           };
         }),
         summary,
@@ -159,6 +162,13 @@ export const convertProps = ({ data }: { data: GridItem }) => {
         },
       };
     }
+    case 'map':
+      return {
+        ...data?.componentProps,
+        children: data?.componentProps.dataSource?.map((item: any) => (
+          <Maker key={`${item.lat}-${item.lng}`} lat={item.lat} lng={item.lng} text="My Marker" />
+        )),
+      };
     default:
       break;
   }
@@ -185,14 +195,8 @@ export const convertProps = ({ data }: { data: GridItem }) => {
   };
 };
 export const getName = (id: string) => id.split('$')[0];
-const wrapWithAnchor = (children: ReactNode = 'Click me') => (
-  <a
-    onClick={(e) => {
-      e.preventDefault();
-      e.stopPropagation();
-    }}
-  >
-    <List pagination={{}} />
-    {children}
-  </a>
+const Maker = ({ text, lat, lng }: { text: string; lat: number; lng: number }) => (
+  <Popover title={text}>
+    <Icon icon={'healthicons:geo-location-outline-24px'} className="text-red-400 fill-cyan-50" />
+  </Popover>
 );
