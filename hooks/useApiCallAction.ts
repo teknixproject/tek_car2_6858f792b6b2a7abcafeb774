@@ -10,7 +10,8 @@ import {
 } from '@/types';
 import { variableUtil } from '@/uitls';
 
-import { actionHookSliceStore } from './actionSliceStore';
+import { actionHookSliceStore } from './store/actionSliceStore';
+import { TActionsProps } from './useActions';
 import { useApiCall } from './useApiCall';
 import { useCustomFunction } from './useCustomFunction';
 import { useHandleData } from './useHandleData';
@@ -20,8 +21,17 @@ const { isUseVariable, extractAllValuesFromTemplate } = variableUtil;
 export type TUseActions = {
   handleApiCallAction: (action: TAction<TActionApiCall>) => Promise<void>;
 };
+const convertUrl = (apiCallMember: TApiCallValue, fallbackUrl?: string): string => {
+  const baseUrl = apiCallMember?.url || fallbackUrl || '';
 
-export const useApiCallAction = (): TUseActions => {
+  if (!apiCallMember?.variables?.length) return baseUrl;
+
+  return apiCallMember.variables.reduce(
+    (url, { key, value }) => url.replace(`[${key}]`, String(value)),
+    baseUrl
+  );
+};
+export const useApiCallAction = (props: TActionsProps): TUseActions => {
   const router = useRouter();
   const { getApiMember } = useApiCall();
   const { getData } = useHandleData({});
@@ -30,7 +40,7 @@ export const useApiCallAction = (): TUseActions => {
   const forbiddenCode = authSettingStore((state) => state.forbiddenCode);
   const findVariable = stateManagementStore((state) => state.findVariable);
   const updateVariables = stateManagementStore((state) => state.updateVariables);
-  const { handleCustomFunction } = useCustomFunction();
+  const { handleCustomFunction } = useCustomFunction(props);
   const { getState } = actionHookSliceStore;
   const convertActionVariables = useCallback(
     (actionVariables: TActionVariable[], apiCall: TApiCallValue): any[] => {
@@ -115,13 +125,13 @@ export const useApiCallAction = (): TUseActions => {
       const response = await axios.request({
         baseURL: apiCall?.baseUrl || '',
         method: apiCall?.method?.toUpperCase(),
-        url: apiCall.url,
+        url: convertUrl(apiCall),
         headers: convertHeader(apiCall),
         data: ['POST', 'PUT', 'PATCH'].includes(apiCall?.method?.toUpperCase() || '') && body,
         params: ['GET'].includes(apiCall?.method?.toUpperCase() || '') && convertQuery(apiCall),
       });
 
-      if (outputVariable) {
+      if (outputVariable?.id) {
         updateVariables({
           type: 'apiResponse',
           dataUpdate: {

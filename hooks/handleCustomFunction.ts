@@ -55,13 +55,13 @@ export const handleCustomFunction = async ({
     props: TCustomFunction['props'],
     inputs: TData['customFunction']['props']
   ) {
-    console.log('🚀 ~ inputs:', inputs);
     const args: Record<string, any> = {};
 
-    props.forEach((prop) => {
+    props.forEach(async (prop) => {
       if (!prop.key) return;
-      const rawData = getData(inputs?.find((item) => item.key === prop.key)?.value || null);
-      console.log('🚀 ~ props.forEach ~ rawData:', rawData);
+      const input = inputs?.find((item) => item.key === prop.key);
+
+      const rawData = await getData(input?.value || null);
 
       args[prop.key] = convertValueByType(rawData, prop.type, prop.isList);
     });
@@ -71,7 +71,7 @@ export const handleCustomFunction = async ({
   const customFunction = findCustomFunction(data.customFunctionId);
 
   if (_.isEmpty(customFunction)) return;
-  const args = buildArgsFromDefinedProps(customFunction?.props, data?.props);
+  const args = await buildArgsFromDefinedProps(customFunction?.props, data?.props);
   const runFunction = async () => {
     try {
       const fn = new Function(`return ${customFunction.code}`)() as (args: any) => any;

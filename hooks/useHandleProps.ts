@@ -2,15 +2,11 @@ import _ from 'lodash';
 import { useEffect, useMemo, useRef } from 'react';
 
 import {
-  TAction,
-  TActionApiCall,
-  TActionNavigate,
-  TActionUpdateState,
-  TTriggerActions,
-  TTriggerValue,
+    TAction, TActionApiCall, TActionNavigate, TActionUpdateState, TTriggerActions, TTriggerValue
 } from '@/types';
+import { GridItem } from '@/types/gridItem';
 
-import { actionHookSliceStore } from './actionSliceStore';
+import { actionHookSliceStore } from './store/actionSliceStore';
 import { useActions } from './useActions';
 import { useApiCallAction } from './useApiCallAction';
 import { useNavigateAction } from './useNavigateAction';
@@ -33,6 +29,7 @@ interface UseHandlePropsProps {
   dataProps: TDataProps[];
   valueStream?: any;
   formData?: any;
+  data?: GridItem;
 }
 
 // Constants
@@ -151,21 +148,25 @@ export const createMouseEventHandlers = (
   return result;
 };
 
-export const useHandleProps = ({ dataProps }: UseHandlePropsProps): UseHandlePropsResult => {
+export const useHandleProps = ({
+  dataProps,
+  data,
+  valueStream,
+}: UseHandlePropsProps): UseHandlePropsResult => {
   const triggerNameRef = useRef<TTriggerValue>(DEFAULT_TRIGGER);
   const previousActionsMapRef = useRef<Record<string, TTriggerActions>>({});
   const setMultipleActions = actionHookSliceStore((state) => state.setMultipleActions);
 
   const actionsMap = useMemo(() => createActionsMap(dataProps), [dataProps]);
 
-  const { handleApiCallAction } = useApiCallAction();
-  const { executeActionFCType } = useActions();
+  const { handleApiCallAction } = useApiCallAction({ valueStream, data });
+  const { executeActionFCType } = useActions({ valueStream, data });
 
   // const { executeConditional } = useConditionAction();
 
   const { handleUpdateStateAction } = useUpdateStateAction();
 
-  const { handleNavigateAction } = useNavigateAction();
+  const { handleNavigateAction } = useNavigateAction({ valueStream, data });
 
   const executeAction = useMemo(
     () =>
